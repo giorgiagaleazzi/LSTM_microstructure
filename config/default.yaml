@@ -1,0 +1,73 @@
+seed: 1234
+
+train_size: 0.70
+
+validation_size: 0.20
+
+forecast_horizon: 1
+
+lags: 4
+
+scaling:
+
+    method: minmax
+
+    range:
+
+        - -1
+
+        - 1
+
+training:
+
+    batch_size: 32
+
+    epochs: 250
+
+    learning_rate: 0.001
+
+    weight_decay: 0.0001
+
+    early_stopping: 20
+
+lstm:
+
+    hidden_size: 64
+
+    layers: 2
+
+    dropout: 0.20
+
+feedforward:
+
+    hidden:
+
+        - 64
+
+        - 32
+
+portfolio:
+
+    target_volatility: 0.10
+
+    risk_aversion: 6
+
+currencies:
+
+    AUD
+
+    CAD
+
+    CHF
+
+    EUR
+
+    GBP
+
+    JPY
+
+    NOK
+
+    NZD
+
+    SEK
