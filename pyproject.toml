@@ -1,0 +1,55 @@
+[build-system]
+
+requires = ["setuptools>=70"]
+
+build-backend = "setuptools.build_meta"
+
+[project]
+
+name = "microstructure_forecasting"
+
+version = "1.0.0"
+
+description = "Microstructure Exchange Rate Forecasting"
+
+authors = [
+
+{name="Giorgia Galeazzi"}
+
+]
+
+requires-python = ">=3.11"
+
+dependencies = [
+
+"numpy",
+
+"pandas",
+
+"scipy",
+
+"scikit-learn",
+
+"torch",
+
+"matplotlib",
+
+"statsmodels",
+
+"openpyxl",
+
+"xlrd",
+
+"PyYAML",
+
+"tqdm"
+
+]
+
+[tool.black]
+
+line-length = 88
+
+[tool.isort]
+
+profile = "black"
