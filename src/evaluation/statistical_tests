@@ -1,0 +1,119 @@
+"""
+Statistical tests — paper Section 3.5 and Appendix B.
+
+1. Jobson–Korkie (1981) test for Sharpe ratio equality
+   with Memmel (2003) correction.
+2. Ledoit–Wolf (2008) circular block bootstrap test.
+3. Lo (2002) Sharpe ratio standard error and confidence interval.
+"""
+from __future__ import annotations
+import numpy as np
+from scipy import stats
+
+
+# ── 1. Jobson–Korkie / Memmel ────────────────────────────────────────────
+
+def jobson_korkie_test(
+    r_i: np.ndarray,
+    r_j: np.ndarray,
+    rf:  float = 0.0,
+    annualise: int = 12,      # monthly returns → annual
+) -> dict:
+    """
+    Test H0: SR_i = SR_j using Jobson & Korkie (1981) with
+    Memmel (2003) correction.
+
+    Parameters
+    ----------
+    r_i, r_j   : excess return series (same length, same frequency)
+    annualise   : periods per year for annualisation
+
+    Returns
+    -------
+    dict with keys: sr_i, sr_j, z_stat, p_value (two-sided)
+    """
+    ri = r_i - rf
+    rj = r_j - rf
+    T  = len(ri)
+
+    sr_i = ri.mean() / ri.std(ddof=1)
+    sr_j = rj.mean() / rj.std(ddof=1)
+
+    rho   = np.corrcoef(ri, rj)[0, 1]
+    sigma = np.sqrt(
+        (1 / T) * (
+            2 * (1 - rho)
+            + 0.5 * (sr_i**2 + sr_j**2 - sr_i * sr_j * (1 + rho**2))
+        )
+    )
+    z = (sr_i - sr_j) / sigma
+    p = 2 * stats.norm.sf(abs(z))
+
+    return {
+        "sr_i":    sr_i * np.sqrt(annualise),
+        "sr_j":    sr_j * np.sqrt(annualise),
+        "z_stat":  z,
+        "p_value": p,
+    }
+
+
+# ── 2. Ledoit–Wolf circular block bootstrap ───────────────────────────────
+
+def ledoit_wolf_test(
+    r_i: np.ndarray,
+    r_j: np.ndarray,
+    block_length: int = 3,
+    n_bootstrap:  int = 10_000,
+    seed:         int = 42,
+    annualise:    int = 12,
+) -> dict:
+    """
+    Robust Sharpe ratio test via circular block bootstrap
+    (Ledoit and Wolf, 2008). Robust to non-normality and serial correlation.
+
+    Returns
+    -------
+    dict with keys: sr_i, sr_j, p_value, ci_95 (for SR_i - SR_j)
+    """
+    rng = np.random.default_rng(seed)
+    T   = len(r_i)
+    ri, rj = np.array(r_i), np.array(r_j)
+
+    def sr_diff(a, b):
+        return a.mean() / a.std(ddof=1) - b.mean() / b.std(ddof=1)
+
+    obs_diff = sr_diff(ri, rj)
+
+    # Circular block bootstrap
+    diffs = np.empty(n_bootstrap)
+    for b in range(n_bootstrap):
+        starts = rng.integers(0, T, size=T // block_length + 1)
+        idx    = np.concatenate([np.arange(s, s + block_length) % T
+                                 for s in starts])[:T]
+        diffs[b] = sr_diff(ri[idx], rj[idx])
+
+    p_value = np.mean(np.abs(diffs - diffs.mean()) >= abs(obs_diff))
+    ci_lo, ci_hi = np.percentile(diffs, [2.5, 97.5])
+
+    sr_i = ri.mean() / ri.std(ddof=1) * np.sqrt(annualise)
+    sr_j = rj.mean() / rj.std(ddof=1) * np.sqrt(annualise)
+
+    return {
+        "sr_i":    sr_i,
+        "sr_j":    sr_j,
+        "p_value": p_value,
+        "ci_95":   (ci_lo * np.sqrt(annualise), ci_hi * np.sqrt(annualise)),
+    }
+
+
+# ── 3. Lo (2002) Sharpe SE ───────────────────────────────────────────────
+
+def sharpe_se(sr: float, T: int) -> float:
+    """Standard error of annualised SR under normality (Lo, 2002)."""
+    return float(np.sqrt((1 + 0.5 * sr**2) / T))
+
+
+def sharpe_ci(sr: float, T: int, alpha: float = 0.05) -> tuple[float, float]:
+    z = stats.norm.ppf(1 - alpha / 2)
+    se = sharpe_se(sr, T)
+    return sr - z * se, sr + z * se
