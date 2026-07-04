@@ -1,4 +1,4 @@
-# Neural Microstructure Technique (NMT)
+# Neural Microstructure Technique (NMT) - LSTM NARX
 
 > **Galeazzi, G. (2025). Financial Customer Order Flow, Heterogeneous Beliefs,
 > and Exchange Rate Predictability: Evidence from Non-Linear Microstructure Models.**
