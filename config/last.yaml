@@ -1,0 +1,27 @@
+# ============================================================
+# LSTM architecture — baseline specification (paper Section 3.4)
+# ============================================================
+
+architecture:
+  layers: 2
+  hidden_units: 32                      # baseline; sensitivity: 16, 64, 128
+  dropout: 0.20                         # applied to LSTM output each step
+  recurrent_dropout: 0.00
+  dense_activation: linear
+
+training:
+  optimizer: adam
+  learning_rate: 0.001
+  loss: mse
+  batch_size: 16
+  max_epochs: 200
+  early_stopping:
+    monitor: val_loss
+    patience: 10
+    restore_best_weights: true
+  l2_lambda: 0.0001                     # dense layer weight decay
+
+sensitivity:                            # Appendix A grid
+  hidden_units: [16, 32, 64, 128]
+  lags: [4, 8, 12]
+  dropout: [0.10, 0.20, 0.30]
