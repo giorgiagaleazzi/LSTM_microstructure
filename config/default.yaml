@@ -1,73 +1,41 @@
-seed: 1234
+# ============================================================
+# Neural Microstructure Technique — default configuration
+# Galeazzi (2025)
+# ============================================================
 
-train_size: 0.70
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  interim_dir: data/interim
+  fx_file: DataSourceEUR.xlsx          # Reuters spot rates
+  order_flow_file: dt_chapter1.xls     # UBS customer order flow
+  currencies:
+    - AUD
+    - CAD
+    - CHF
+    - EUR
+    - GBP
+    - JPY
+    - NOK
+    - NZD
+    - SEK
+  segments:
+    - asset_managers
+    - hedge_funds
+    - corporates
+    - private_clients
+  start_date: "2001-11-02"
+  end_date: "2007-11-23"
+  frequency: W                          # weekly
 
-validation_size: 0.20
+split:
+  train_ratio: 0.70                     # 70 % training
+  oos_start: "2005-11-01"              # start of walk-forward OOS window
+  validation_fraction: 0.15            # of training set for early stopping
 
-forecast_horizon: 1
+preprocessing:
+  lags: 8                               # T = 8 weekly lags
+  scale_method: std                     # divide by training-set std dev
+  log_returns: true                     # use log returns for FX
 
-lags: 4
-
-scaling:
-
-    method: minmax
-
-    range:
-
-        - -1
-
-        - 1
-
-training:
-
-    batch_size: 32
-
-    epochs: 250
-
-    learning_rate: 0.001
-
-    weight_decay: 0.0001
-
-    early_stopping: 20
-
-lstm:
-
-    hidden_size: 64
-
-    layers: 2
-
-    dropout: 0.20
-
-feedforward:
-
-    hidden:
-
-        - 64
-
-        - 32
-
-portfolio:
-
-    target_volatility: 0.10
-
-    risk_aversion: 6
-
-currencies:
-
-    AUD
-
-    CAD
-
-    CHF
-
-    EUR
-
-    GBP
-
-    JPY
-
-    NOK
-
-    NZD
-
-    SEK
+seed: 42
