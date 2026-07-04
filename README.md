@@ -1,178 +1,134 @@
-# Microstructure Exchange Rate Forecasting
+# Neural Microstructure Technique (NMT)
 
-A fully reproducible implementation of the forecasting framework
-presented in
+> **Galeazzi, G. (2025). Financial Customer Order Flow, Heterogeneous Beliefs,
+> and Exchange Rate Predictability: Evidence from Non-Linear Microstructure Models.**
+> Working Paper, University of Glasgow.
 
-> "Non-linear Forecasting using Machine Learning Models"
+This repository provides a fully reproducible implementation of the
+**Neural Microstructure Technique** — a framework that combines disaggregated
+customer order flow with LSTM recurrent neural networks to measure how much
+of each customer segment's predictive content in FX markets is **orthogonal
+to publicly observable macroeconomic information**.
 
-This repository reproduces the forecasting methodology developed in
-the thesis using modern Python.
-
-The repository contains
-
-- complete preprocessing pipeline
-- feedforward neural network
-- LSTM forecasting
-- NARX forecasting
-- Random Walk benchmark
-- Purchasing Power Parity benchmark
-- Uncovered Interest Parity benchmark
-- rolling out-of-sample forecasting
-- portfolio construction
-- Sharpe ratio
-- Sortino ratio
-- automatic reproduction of all figures and tables
+The primary result is the **R² decomposition** (Table 1 / Figure 2): the
+fraction of each segment's predictive content explained by standard macro
+benchmarks. A low R² for asset managers (16.1%) and a high R² for corporates
+(39.4%) is consistent with informed-trading theory.
 
 ---
 
-microstructure_forecasting/
-│
-├── README.md
-├── LICENSE
-├── CITATION.cff
-├── pyproject.toml
-├── requirements.txt
-├── environment.yml
-├── .gitignore
+## Repository structure
+
+```
 ├── config/
-│   ├── default.yaml
-│   ├── lstm.yaml
-│   ├── narx.yaml
-│   └── portfolio.yaml
-│
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── interim/
-│
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_preprocessing.ipynb
-│   ├── 03_reproduce_chapter.ipynb
-│   └── 04_portfolio_analysis.ipynb
+│   ├── default.yaml          # data paths, currencies, sample period
+│   ├── lstm.yaml             # LSTM architecture and training
+│   └── portfolio.yaml        # portfolio construction parameters
 │
 ├── src/
 │   ├── data/
-│   │   ├── loader.py
-│   │   ├── preprocessing.py
-│   │   ├── scaling.py
-│   │   ├── supervised.py
-│   │   └── validation.py
-│   │
+│   │   ├── loader.py         # load FX returns and UBS order flow
+│   │   └── preprocessing.py  # scaling, supervised format, lags
 │   ├── models/
-│   │   ├── feedforward.py
-│   │   ├── lstm.py
-│   │   ├── narx.py
-│   │   ├── random_walk.py
-│   │   ├── ppp.py
-│   │   └── uip.py
-│   │
+│   │   ├── lstm.py           # LSTM build + train (paper Section 3.4)
+│   │   ├── narx.py           # NARX robustness model
+│   │   └── benchmarks.py     # Random Walk, UIP, PPP
 │   ├── forecasting/
-│   │   ├── trainer.py
-│   │   ├── rolling_window.py
-│   │   └── prediction.py
-│   │
+│   │   └── rolling_window.py # expanding walk-forward engine
 │   ├── evaluation/
-│   │   ├── metrics.py
-│   │   ├── dm_test.py
-│   │   ├── statistical_tests.py
-│   │   └── diagnostics.py
-│   │
+│   │   ├── metrics.py        # RMSE, MAPE, RMSFE ratio
+│   │   └── statistical_tests.py  # Jobson–Korkie, Ledoit–Wolf, Lo SR CI
 │   ├── portfolio/
-│   │   ├── optimizer.py
-│   │   ├── allocation.py
-│   │   ├── performance.py
-│   │   └── risk.py
-│   │
-│   ├── visualization/
-│   │   ├── figures.py
-│   │   ├── tables.py
-│   │   └── styles.py
-│   │
-│   └── utils/
-│       ├── config.py
-│       ├── logging.py
-│       ├── seed.py
-│       └── io.py
+│   │   └── performance.py    # SR, SO, R² decomposition (NMT primary)
+│   └── visualization/
+│       └── figures.py        # Figure 1, Figure 2
 │
 ├── scripts/
-│   ├── preprocess.py
-│   ├── train_feedforward.py
-│   ├── train_lstm.py
-│   ├── train_narx.py
-│   ├── reproduce_tables.py
-│   ├── reproduce_figures.py
-│   └── reproduce_paper.py
+│   ├── reproduce_paper.py    # single entry point — all tables + figures
+│   └── sensitivity_analysis.py  # Appendix A LSTM architecture grid
 │
-├── tests/
-│
-└── docs/
-
-
-## Installation
-
-```bash
-git clone https://github.com/USERNAME/microstructure_forecasting.git
-
-cd microstructure_forecasting
-
-pip install -e .
-```
-
-or
-
-```bash
-pip install -r requirements.txt
+└── outputs/
+    ├── tables/               # CSV tables
+    └── figures/              # PNG figures at 300 dpi
 ```
 
 ---
 
 ## Data
 
-Place the raw Excel files inside
+Place the raw data files in `data/raw/`:
 
-```
-data/raw/
-```
+| File | Description |
+|---|---|
+| `DataSourceEUR.xlsx` | Weekly FX spot rates (Reuters/DataStream) |
+| `dt_chapter1.xls` | UBS customer order flow by segment |
 
-```
-DataSourceEUR.xlsx
-dt_chapter1.xls
+> **Note:** UBS customer order flow data are proprietary and cannot be
+> distributed. The sample covers November 2001 – November 2007 (317 weekly
+> observations) and is identical to Cerrato, Sarantis & Saunders (2011) and
+> Cerrato, Kim & MacDonald (2015).
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/giorgiagaleazzi/LSTM_microstructure.git
+cd LSTM_microstructure
+pip install -r requirements.txt
 ```
 
 ---
 
 ## Reproduce the paper
 
-```
+```bash
 python scripts/reproduce_paper.py
 ```
 
----
+This runs the full walk-forward exercise for all 9 currencies × 4 segments,
+constructs portfolios, computes the R² decomposition (primary result),
+runs Jobson–Korkie significance tests, and saves all tables and figures.
 
-## Repository
+**Expected outputs:**
 
+| File | Description |
+|---|---|
+| `outputs/tables/Table1_r2_decomposition.csv` | PRIMARY RESULT |
+| `outputs/tables/Table2_portfolio_performance.csv` | SR, SO by segment |
+| `outputs/tables/Table3_jk_significance.csv` | Jobson–Korkie p-values |
+| `outputs/figures/figure1_sharpe_sortino.png` | Figure 1 |
+| `outputs/figures/figure2_r2_decomposition.png` | Figure 2 |
+
+## Architecture sensitivity (Appendix A)
+
+```bash
+python scripts/sensitivity_analysis.py --currency EUR --segment asset_managers
 ```
-src/
-    data/
-    models/
-    forecasting/
-    evaluation/
-    portfolio/
-    visualization/
-```
+
+Produces `outputs/tables/TableA1_lstm_sensitivity.csv`.
 
 ---
 
 ## Citation
 
-If you use this repository please cite
+```bibtex
+@techreport{galeazzi2025nmt,
+  author      = {Galeazzi, Giorgia},
+  title       = {Financial Customer Order Flow, Heterogeneous Beliefs,
+                 and Exchange Rate Predictability:
+                 Evidence from Non-Linear Microstructure Models},
+  institution = {University of Glasgow},
+  year        = {2025},
+  type        = {Working Paper}
+}
 
-Galeazzi (2023)
-
-```
-BibTeX
-...
+@phdthesis{galeazzi2023,
+  author = {Galeazzi, Giorgia},
+  title  = {Essays on International Economics},
+  school = {University of Glasgow},
+  year   = {2023}
+}
 ```
 
 ---
