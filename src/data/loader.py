@@ -1,85 +1,69 @@
 """
-Load raw datasets used throughout the project.
+Raw data loader.
 
-The loader supports
+Expected files in data/raw/
+  - DataSourceEUR.xlsx  : weekly FX spot rates (Reuters/DataStream)
+  - dt_chapter1.xls     : UBS customer order flow by segment
 
-- xlsx
-- xls
-
-and automatically validates the contents.
+Column conventions after loading
+  - FX returns   : log returns, one column per currency (AUD, CAD, …)
+  - Order flow   : one column per (currency, segment) combination,
+                   e.g. AUD_asset_managers, AUD_hedge_funds, …
 """
-
 from __future__ import annotations
-
+import pandas as pd
+import numpy as np
 from pathlib import Path
 
-import pandas as pd
+
+CURRENCIES = ["AUD", "CAD", "CHF", "EUR", "GBP", "JPY", "NOK", "NZD", "SEK"]
+SEGMENTS   = ["asset_managers", "hedge_funds", "corporates", "private_clients"]
 
 
-SUPPORTED = [".xlsx", ".xls"]
-
-
-class DatasetLoader:
-
+def load_fx(path: str | Path) -> pd.DataFrame:
     """
-    Load Excel datasets.
+    Load weekly FX spot rates and compute log returns.
+    Returns a DataFrame indexed by date with one column per currency.
     """
+    df = pd.read_excel(path, index_col=0, parse_dates=True)
+    df = df.sort_index()
+    # Compute log returns: r_t = ln(s_t) - ln(s_{t-1})
+    returns = np.log(df).diff().dropna()
+    returns.columns = [c.upper() for c in returns.columns]
+    return returns
 
-    def __init__(self, path: str | Path):
 
-        self.path = Path(path)
+def load_order_flow(path: str | Path) -> pd.DataFrame:
+    """
+    Load UBS customer order flow disaggregated by segment.
+    Returns a DataFrame indexed by date with columns:
+      {CURRENCY}_{segment}
+    Order flow is defined as buyer-initiated minus seller-initiated
+    transactions (positive = net foreign currency purchase).
+    """
+    xl = pd.ExcelFile(path)
+    frames = []
+    for sheet in xl.sheet_names:
+        df = xl.parse(sheet, index_col=0, parse_dates=True)
+        df = df.sort_index()
+        # Expect columns: asset_managers, hedge_funds, corporates, private_clients
+        df.columns = [c.lower().replace(" ", "_") for c in df.columns]
+        df = df.rename(columns={c: f"{sheet.upper()}_{c}" for c in df.columns})
+        frames.append(df)
+    combined = pd.concat(frames, axis=1)
+    return combined
 
-        if not self.path.exists():
 
-            raise FileNotFoundError(self.path)
+def load_all(cfg: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load FX returns and order flow; align on common dates and date range."""
+    raw = Path(cfg["data"]["raw_dir"])
+    fx = load_fx(raw / cfg["data"]["fx_file"])
+    of = load_order_flow(raw / cfg["data"]["order_flow_file"])
 
-        if self.path.suffix.lower() not in SUPPORTED:
+    # Align
+    idx = fx.index.intersection(of.index)
+    start = pd.Timestamp(cfg["data"]["start_date"])
+    end   = pd.Timestamp(cfg["data"]["end_date"])
+    idx   = idx[(idx >= start) & (idx <= end)]
 
-            raise ValueError(
-                f"Unsupported file type {self.path.suffix}"
-            )
-
-    def load(self) -> pd.DataFrame:
-
-        if self.path.suffix == ".xlsx":
-
-            df = pd.read_excel(
-                self.path,
-                engine="openpyxl"
-            )
-
-        else:
-
-            df = pd.read_excel(
-                self.path,
-                engine="xlrd"
-            )
-
-        return df
-
-    @staticmethod
-    def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
-
-        df.columns = (
-            df.columns
-            .str.strip()
-            .str.replace(" ", "_")
-            .str.lower()
-        )
-
-        return df
-
-    @staticmethod
-    def print_summary(df: pd.DataFrame):
-
-        print("=" * 60)
-
-        print("Rows :", len(df))
-
-        print("Columns :", len(df.columns))
-
-        print()
-
-        print(df.columns.tolist())
-
-        print("=" * 60)
+    return fx.loc[idx], of.loc[idx]
