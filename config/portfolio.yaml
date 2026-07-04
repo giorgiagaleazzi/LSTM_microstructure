@@ -1,0 +1,10 @@
+# ============================================================
+# Portfolio construction — paper Section 3.6
+# ============================================================
+
+target_volatility: 0.10               # σ* = 10 % annualised
+risk_aversion: 6                       # γ = 6
+rebalancing: monthly                   # M = monthly
+transaction_costs: 0.001              # proportional, 10 bps round-trip
+annualisation_factor: 52              # weekly returns → annual
+risk_free_rate: 0.0                   # excess returns
